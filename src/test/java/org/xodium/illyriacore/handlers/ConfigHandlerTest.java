@@ -1,5 +1,5 @@
 package org.xodium.illyriacore.handlers;
 
-public class CustomAnvilHandlerTest {
+public class ConfigHandlerTest {
 
 }

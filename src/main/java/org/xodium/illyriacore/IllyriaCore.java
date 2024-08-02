@@ -1,83 +1,69 @@
 package org.xodium.illyriacore;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import org.xodium.illyriacore.configs.Config;
+import org.spongepowered.configurate.CommentedConfigurationNode;
+import org.spongepowered.configurate.ConfigurateException;
+import org.xodium.illyriacore.commands.ReloadCommand;
+import org.xodium.illyriacore.handlers.ConfigHandler;
 import org.xodium.illyriacore.handlers.ModuleHandler;
-import org.xodium.illyriacore.interfaces.MessagesInterface;
-import org.xodium.illyriacore.utils.IllyriaUtils;
+import org.xodium.illyriacore.interfaces.ACI;
+import org.xodium.illyriacore.interfaces.MI;
 
-public class IllyriaCore extends JavaPlugin implements MessagesInterface {
+/**
+ * The main class of the IllyriaCore plugin.
+ * This class extends the JavaPlugin class provided by Bukkit.
+ * It handles the enable, disable, and reload events of the plugin.
+ */
+public class IllyriaCore extends JavaPlugin {
 
-  private final boolean IS_DEBUG = getConfig().getBoolean(Config.DEBUG);
-
-  private static IllyriaCore instance;
-
-  /**
-   * Returns the singleton instance of the IllyriaCore class.
-   *
-   * @return the singleton instance of IllyriaCore
-   */
-  public static IllyriaCore getInstance() {
-    return instance;
-  }
+  public static final String PAPERMC_V = "1.21-R0.1-SNAPSHOT";
+  public static final String BUKKIT_V = Bukkit.getBukkitVersion();
+  public static final String COMP_V = ACI.YELLOW + "Is only compatible with " + PAPERMC_V + ACI.RESET;
 
   /**
-   * Prints the specified debug text if debug mode is enabled.
-   *
-   * @param text the debug text to print
-   */
-  public void debug(String text) {
-    if (IS_DEBUG) {
-      getLogger().warning(Config.init().getString(Config.DEBUG_PREFIX) + text);
-    }
-  }
-
-  /**
-   * Returns the current debug mode status.
-   *
-   * @return true if the application is running in debug mode, false otherwise.
-   */
-  public boolean isDebug() {
-    return IS_DEBUG;
-  }
-
-  /**
-   * Called when the plugin is enabled.
-   * Checks if the server version is compatible and initializes custom items.
-   * If the server version is not compatible, the plugin is disabled.
+   * {@inheritDoc}
    */
   @Override
   public void onEnable() {
-    instance = this;
-    getLogger().info(SERVER_VERSION_MSG + VERSION);
-    if (!IllyriaUtils.isCompatible(VERSION)) {
-      getLogger().severe(COMP_VERSION_MSG);
+    getLogger().info(MI.SERVER_V + BUKKIT_V);
+    if (!BUKKIT_V.contains(PAPERMC_V)) {
+      getLogger().severe(COMP_V);
       getServer().getPluginManager().disablePlugin(this);
       return;
     }
-    ModuleHandler.init();
-    saveDefaultConfig();
-    getLogger().info(ENABLED_MSG);
+    try {
+      ConfigHandler configHandler = new ConfigHandler();
+      CommentedConfigurationNode conf = configHandler.init(this);
+
+      ReloadCommand.init(getLifecycleManager(), conf);
+
+      ModuleHandler moduleHandler = new ModuleHandler();
+      moduleHandler.init(this, conf);
+
+      saveDefaultConfig();
+      getLogger().info(MI.PLUGIN_ENABLED);
+    } catch (ConfigurateException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
-   * Reloads the plugin configuration.
-   * This method saves the default configuration and reloads the configuration
-   * from file.
+   * Reloads the configuration of the plugin.
+   * This method saves the default configuration, reloads the configuration file,
+   * and logs a message indicating that the plugin has been reloaded.
    */
   public void reload() {
     saveDefaultConfig();
     reloadConfig();
+    getLogger().info(MI.PLUGIN_RELOADED);
   }
 
   /**
-   * Called when the plugin is being disabled.
-   * This method is responsible for performing any necessary cleanup or
-   * finalization tasks.
+   * {@inheritDoc}
    */
   @Override
   public void onDisable() {
-    getLogger().info(DISABLED_MSG);
+    getLogger().info(MI.PLUGIN_DISABLED);
   }
 }

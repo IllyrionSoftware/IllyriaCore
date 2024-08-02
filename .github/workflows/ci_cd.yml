@@ -1,0 +1,65 @@
+name: Xodium CI/CD
+run-name: "Xodium CI/CD"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '.deploy')
+    environment:
+      name: ${{ github.ref_name }}
+      url: ${{ steps.create_release.outputs.url }}
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@main
+
+      - id: setup_jdk
+        name: Set up JDK
+        uses: actions/setup-java@main
+        with:
+          distribution: "adopt"
+          java-version: "21"
+
+      - id: cache_maven_packages
+        name: Cache Maven packages
+        uses: actions/cache@main
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - id: get_version
+        name: Get Version
+        uses: dostonhamrakulov/maven-artifact-version-extractor@master
+        with:
+          file_path: ${{ github.workspace }}/pom.xml
+
+      - id: build_jar
+        name: Build with Maven
+        run: mvn package
+
+      - id: create_release
+        name: Create Release
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: ${{ contains(github.event.head_commit.message, '.draft') }}
+          files: target/*.jar
+          generate_release_notes: true
+          prerelease: ${{ contains(github.event.head_commit.message, '.pre') }}
+          tag_name: v${{ steps.get_version.outputs.VERSION }}

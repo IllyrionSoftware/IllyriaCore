@@ -1,5 +1,5 @@
 package org.xodium.illyriacore.handlers;
 
-public class CustomItemHandlerTest {
+public class ModuleHandlerTest {
 
 }
